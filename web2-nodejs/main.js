@@ -1,154 +1,52 @@
-var http = require('http');
+var express = require('express');
+var app = express();
 var fs = require('fs');
-var url = require('url');
-var qs = require('querystring');
-var template = require('./lib/template.js')
-var path = require('path');
-var sanitizeHtml = require('sanitize-html')
 
-var app = http.createServer(function(request,response){
-    var _url = request.url;
-    var queryData = url.parse(_url, true).query;
-    var pathname =  url.parse(_url, true).pathname;
-    var title = queryData.id;
+var bodyParser = require('body-parser');
+var compression = require('compression');
+var topicRouter = require('./routes/topic');
+var indexRouter = require('./routes/index');
+var helmet = require('helmet')
 
-    
-    if(pathname === '/') {
-        if(queryData.id === undefined){
+app.use(helmet());
 
-            fs.readdir('./data', function(error, filelist){                
-                var title = 'Welcome';
-                var description = 'Hello, Node.js'; 
-                var list = template.list(filelist);
-              
-                var html = template.html(title, list,
-                     `<h2>${title}</h2><p>${description}</p>`, `<a href="/create">create</a>`);
-                response.writeHead(200);
-                response.end(html);
-            });            
-        } else {
-            fs.readdir('./data', function(error, filelist){                
-                var list = template.list(filelist);
-                var filteredId = path.parse(queryData.id).base;//보안
-                fs.readFile(`data/${filteredId}`,'utf8', function(err,description){
-                    var title = queryData.id;
-                    var sanitizedTitle= sanitizeHtml(title);
-                    var sanitizedDesc = sanitizeHtml(description);
-                    var html = template.html(sanitizedTitle, list,
-                        `<h2>${sanitizedTitle}</h2><p>${sanitizedDesc}</p>`
-                        , `<a href="/create">create</a> 
-                           <a href="/update?id=${title}">update</a> 
-                           <form action="delete_process" method="post">
-                            <input type="hidden" name="id" value="${title}">
-                            <input type="submit" value="delete">
-                           </form>                           
-                          `);
-                    response.writeHead(200);
-                    response.end(html);
-                });
-            });    
-        }
+/* 정적파일 위치 등록 */
+app.use(express.static('public'));
 
+/*미들웨어 장착*/
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(compression());
 
-    } else if (pathname === '/create'){
-        fs.readdir('./data', function(error, filelist){                
-            var title = 'WEB-create';            
-            var list = template.list(filelist);
-          
-            var html = template.html(title, list, 
-                `
-                <form action="create_process" method="POST"> 
-                <p><input type="text" name="title" placeholder="title"></p>
-                <p>
-                    <textarea name="description" placeholder="descrion"></textarea>
-                </p>
-                <p>
-                    <input type="submit">
-                </p>
-                </form>
-                `
-                ,``
-            );
-            response.writeHead(200);
-            response.end(html);
-        });             
-    } else if (pathname === '/create_process') {
-        var body = '';
-        request.on('data', function (data){
-            body += data;
-        });
-        request.on('end', function(){
-            var post = qs.parse(body);
-            var title = post.title;
-            var description = post.description;
-            //console.log(post.title);
-            fs.writeFile(`data/${title}`,description,'utf8', function(err){            
-            });
-            response.writeHead(302, {Location: `/?id=${title}`});
-            response.end();
-        });
-    } else if (pathname === '/update') {
-        fs.readdir('./data', function(error, filelist){                
-            var list = template.list(filelist);
-            var filteredId = path.parse(queryData.id).base;//보안
-            fs.readFile(`data/${filteredId}`,'utf8', function(err,description){
-                var title = queryData.id;                    
-                var html = template.html(title, list, 
-                    `
-                    <form action="update_process" method="POST"> 
-                    <input type="hidden" name="id" value="${title}">
-                    <p><input type="text" name="title" placeholder="title" value="${title}"></p>
-                    <p>
-                        <textarea name="description" placeholder="descrion">${description}</textarea>
-                    </p>
-                    <p>
-                        <input type="submit">
-                    </p>
-                    </form>
-                    `
-                    , `<a href="/create">create</a> <a href="/update?id=${title}">update</a>`
-                );
-                response.writeHead(200);
-                response.end(html);
-            });
-        }); 
-    } else if (pathname === '/update_process') {
-        var body = '';
-        request.on('data', function (data){
-            body += data;
-        });
-        request.on('end', function(){
-            var post = qs.parse(body);
-            var id = post.id;
-            var title = post.title;
-            var description = post.description;
-            fs.rename(`data/${id}`, `data/${title}`, function(error){
-                fs.writeFile(`data/${title}`,description,'utf8', function(err){    
-                    response.writeHead(302, {Location: `/?id=${title}`});
-                    response.end();        
-                });
-            });
-        });
-    } else if (pathname === '/delete_process') {
-        var body = '';
-        request.on('data', function (data){
-            body += data;
-        });
-        request.on('end', function(){
-            var post = qs.parse(body);
-            var id = post.id;
-            var filteredId = path.parse(id).base;//보안
-            fs.unlink(`data/${filteredId}`, function(err){
-                response.writeHead(302, {Location: `/`});
-                response.end(); 
-            });
-        });
-    } else {
-        response.writeHead(404);
-        response.end('Not found');
-    }
-
-    // response.end('kimtrasche : ' + url);
+/*미들웨어 만들기 */
+app.get('*', function(request, reponse, next){
+    fs.readdir('./data', function(error, filelist){
+        request.list = filelist;
+        next();
+    });
 });
 
-app.listen(3000);
+app.use('/', indexRouter);
+
+// router 지정
+app.use('/topic', topicRouter);
+
+
+12300
+39280
+12000
+
+
+/* 404 에러 처리*/
+app.use(function(req, res, next) {
+    res.status(404).send('<h2>Sorry</h2');
+});
+
+/* 500 에러 처리*/
+app.use(function(err, req, res, next) {
+    console.error(err.stack);
+    res.status(500).send('<h2>내부오류</h2');
+});
+
+app.listen(3000, function () {
+  console.log('Example app listening on port 3000!');
+});
