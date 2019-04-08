@@ -31,11 +31,6 @@ app.use('/', indexRouter);
 app.use('/topic', topicRouter);
 
 
-12300
-39280
-12000
-
-
 /* 404 에러 처리*/
 app.use(function(req, res, next) {
     res.status(404).send('<h2>Sorry</h2');
