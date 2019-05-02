@@ -6,6 +6,7 @@ var bodyParser = require('body-parser');
 var compression = require('compression');
 var topicRouter = require('./routes/topic');
 var indexRouter = require('./routes/index');
+var authorRouter = require('./lib/author');
 var helmet = require('helmet')
 
 app.use(helmet());
@@ -26,6 +27,9 @@ app.get('*', function(request, reponse, next){
 });
 
 app.use('/', indexRouter);
+
+// author router 지정
+app.use('/author', authorRouter);
 
 // router 지정
 app.use('/topic', topicRouter);

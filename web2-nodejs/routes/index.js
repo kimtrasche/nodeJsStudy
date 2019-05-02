@@ -1,14 +1,7 @@
 var express = require('express');
 var router = express.Router();
-var template = require('../lib/template.js')
-var mysql = require('mysql');
-var db = mysql.createConnection({
-    host     : '192.168.56.1',
-    user     : 'kt4u',
-    password : 'kt4u0512',
-    database : 'opentutorials'
-});
-db.connect();
+var template = require('../lib/template.js');
+var db = require('../lib/db.js');
 
 router.get('/', function (request, response) {    
     db.query(`SELECT * FROM topic`, function(error, topics){        
